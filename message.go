@@ -30,13 +30,17 @@ func (m *Message) MailMessage() (bool, *gomail.Message) {
 		}
 	}
 	message.SetHeader("Subject", m.Subject)
-	message.SetBody(MIME_PLAIN, ParsingBody(m.Body, m.Params))
-	message.AddAlternative(MIME_HTML, ParsingBody(m.HTMLBody, m.Params))
+	plain := ParsingBody(m.Body, m.Params)
+	html := ParsingBody(m.HTMLBody, m.Params)
+	message.SetBody(MIME_PLAIN, plain)
+	message.AddAlternative(MIME_HTML, html)
 	if len(m.Attachments) > 0 {
 		for _, attach := range m.Attachments {
 			message.Attach(attach.Path)
 		}
 	}
+
+	m.Source = map[string]string{"plain": plain, "html": html}
 
 	return true, message
 }
