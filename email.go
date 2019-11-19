@@ -7,14 +7,14 @@ import (
 )
 
 const (
-	MIME_HTML  = "text/html"
-	MIME_PLAIN = "text/plain"
+	MimeHtml  = "text/html"
+	MimePlain = "text/plain"
+)
 
-	EMPTY_SUBJECT = "Empty Subject"
-	EMPTY_FROM    = "Empty Sender"
-	EMPTY_TO      = "Empty Target"
-	EMPTY_BODY    = "Empty Body"
-	EMPTY_HTML    = "Empty Html Body"
+var (
+	ErrInvalidSubject = errors.New("invalid subject")
+	ErrInvalidSender  = errors.New("invalid sender")
+	ErrInvalidTarget  = errors.New("invalid target")
 )
 
 type Param map[string]interface{}
@@ -24,7 +24,6 @@ type Attachments struct {
 }
 
 func NewAttachment(file string) *Attachments {
-
 	return &Attachments{Path: file}
 }
 
@@ -40,7 +39,6 @@ type Message struct {
 }
 
 func Default() *Message {
-
 	return &Message{
 		To:     []mail.Address{},
 		From:   mail.Address{},
@@ -65,6 +63,7 @@ func (m *Message) GetTo() []string {
 	for _, to := range m.To {
 		list = append(list, to.String())
 	}
+
 	return list
 }
 
@@ -81,6 +80,7 @@ func (m *Message) GetCc() []string {
 	for _, cc := range m.Cc {
 		list = append(list, cc.String())
 	}
+
 	return list
 }
 
@@ -93,6 +93,7 @@ func (m *Message) GetBcc() []string {
 	for _, bcc := range m.Bcc {
 		list = append(list, bcc.String())
 	}
+
 	return list
 }
 
@@ -112,7 +113,6 @@ func (m *Message) AddHeader() {
 }
 
 func (m *Message) AddParam(key string, value interface{}) {
-
 	if m.Params == nil {
 		m.ResetParam()
 	}
@@ -121,7 +121,6 @@ func (m *Message) AddParam(key string, value interface{}) {
 }
 
 func (m *Message) AddParams(params Param) {
-
 	if m.Params == nil {
 		m.ResetParam()
 	}
@@ -139,22 +138,21 @@ func (m *Message) Attach(file string) {
 	m.Attachments = append(m.Attachments, &Attachments{Path: file})
 }
 
-func (m *Message) Check() (bool, []error) {
-
+func (m *Message) Validate() (bool, []error) {
 	var (
 		errs []error
 	)
 
 	if m.Subject == "" {
-		errs = append(errs, errors.New(EMPTY_SUBJECT))
+		errs = append(errs, ErrInvalidSubject)
 	}
 
 	if len(m.To) == 0 {
-		errs = append(errs, errors.New(EMPTY_TO))
+		errs = append(errs, ErrInvalidTarget)
 	}
 
 	if m.From == *new(mail.Address) {
-		errs = append(errs, errors.New(EMPTY_FROM))
+		errs = append(errs, ErrInvalidSender)
 	}
 
 	if len(errs) > 0 {

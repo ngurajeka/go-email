@@ -1,13 +1,10 @@
 package email
 
 import (
-	"log"
-
 	"gopkg.in/flosch/pongo2.v3"
 )
 
-func ParsingBody(body []byte, params map[string]interface{}) string {
-
+func ParsingBody(body []byte, params map[string]interface{}) (string, error) {
 	var (
 		tpl    *pongo2.Template
 		result string
@@ -16,14 +13,13 @@ func ParsingBody(body []byte, params map[string]interface{}) string {
 
 	tpl, err = pongo2.FromString(string(body))
 	if err != nil {
-		log.Println(err.Error())
-		return result
+		return result, err
 	}
 
 	result, err = tpl.Execute(params)
 	if err != nil {
-		log.Println(err.Error())
+		return result, err
 	}
 
-	return result
+	return result, nil
 }

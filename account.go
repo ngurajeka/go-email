@@ -5,13 +5,13 @@ import (
 	"net/mail"
 )
 
-const (
-	EMPTY_NAME     = "Empty Name"
-	EMPTY_EMAIL    = "Empty Email Address"
-	EMPTY_HOST     = "Empty Host"
-	EMPTY_USERNAME = "Empty Username"
-	EMPTY_PASSWORD = "Empty Passowrd"
-	EMPTY_PORT     = "Empty Port"
+var (
+	ErrInvalidName     = errors.New("invalid name")
+	ErrInvalidEmail    = errors.New("invalid email address")
+	ErrInvalidHost     = errors.New("invalid host")
+	ErrInvalidUsername = errors.New("invalid username")
+	ErrInvalidPassword = errors.New("invalid password")
+	ErrInvalidPort     = errors.New("invalid port")
 )
 
 type Account struct {
@@ -21,7 +21,6 @@ type Account struct {
 }
 
 func NewAccount(name, email string) *Account {
-
 	a := &Account{}
 	a.SetMail(name, email)
 	a.Credential = &Credential{}
@@ -37,19 +36,18 @@ func (a *Account) SetCredential(host, username, password string, port int) {
 	a.Credential = NewCredential(host, username, password, port)
 }
 
-func (a *Account) Check() (bool, []error) {
-
+func (a *Account) Validate() (bool, []error) {
 	var errs []error
 
 	if a.Mail.Name == "" {
-		errs = append(errs, errors.New(EMPTY_NAME))
+		errs = append(errs, ErrInvalidName)
 	}
 
 	if a.Mail.Address == "" {
-		errs = append(errs, errors.New(EMPTY_EMAIL))
+		errs = append(errs, ErrInvalidEmail)
 	}
 
-	_, errsCredential := a.Credential.Check()
+	_, errsCredential := a.Credential.Validate()
 	if len(errsCredential) > 0 {
 		for _, err := range errsCredential {
 			errs = append(errs, err)
@@ -60,7 +58,7 @@ func (a *Account) Check() (bool, []error) {
 		return false, errs
 	}
 
-	return true, errs
+	return true, nil
 }
 
 func (a *Account) GetHost() string {
@@ -85,7 +83,6 @@ type Credential struct {
 }
 
 func NewCredential(host, username, password string, port int) *Credential {
-
 	return &Credential{
 		Host:     host,
 		Username: username,
@@ -110,29 +107,28 @@ func (c *Credential) SetPort(port int) {
 	c.Port = port
 }
 
-func (c *Credential) Check() (bool, []error) {
-
+func (c *Credential) Validate() (bool, []error) {
 	var errs []error
 
 	if c.Host == "" {
-		errs = append(errs, errors.New(EMPTY_HOST))
+		errs = append(errs, ErrInvalidHost)
 	}
 
 	if c.Username == "" {
-		errs = append(errs, errors.New(EMPTY_USERNAME))
+		errs = append(errs, ErrInvalidUsername)
 	}
 
 	if c.Password == "" {
-		errs = append(errs, errors.New(EMPTY_PASSWORD))
+		errs = append(errs, ErrInvalidPassword)
 	}
 
 	if c.Port == 0 {
-		errs = append(errs, errors.New(EMPTY_PORT))
+		errs = append(errs, ErrInvalidPort)
 	}
 
 	if len(errs) > 0 {
 		return false, errs
 	}
 
-	return true, errs
+	return true, nil
 }
