@@ -35,7 +35,6 @@ type Message struct {
 	Attachments    []*Attachments
 	Body, HTMLBody []byte
 	Params         Param
-	Source         map[string]string
 }
 
 func Default() *Message {

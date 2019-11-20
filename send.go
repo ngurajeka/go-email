@@ -4,26 +4,26 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
-func (m *Message) Send(a *Account) (bool, []error) {
+func (m *Message) Send(a *Account) []error {
 	var (
 		message *gomail.Message
 		errs    []error
 	)
 
 	if ok, errs := a.Authenticate(); !ok {
-		return ok, errs
+		return errs
 	}
 
 	message, ok, errs := m.MailMessage()
 	if !ok {
-		return ok, errs
+		return errs
 	}
 
 	auth := a.Auth.(*gomail.Dialer)
 	if err := auth.DialAndSend(message); err != nil {
 		errs = append(errs, err)
-		return false, errs
+		return errs
 	}
 
-	return true, errs
+	return nil
 }

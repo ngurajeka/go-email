@@ -25,17 +25,20 @@ func (m *Message) MailMessage() (*gomail.Message, bool, []error) {
 		}
 	}
 
-	plain, _ := ParsingBody(m.Body, m.Params)
-	html, _ := ParsingBody(m.HTMLBody, m.Params)
-	message.SetBody(MimePlain, plain)
-	message.AddAlternative(MimeHtml, html)
+	if m.Body != nil {
+		plain, _ := ParsingBody(m.Body, m.Params)
+		message.SetBody(MimePlain, plain)
+	}
+	if m.HTMLBody != nil {
+		html, _ := ParsingBody(m.HTMLBody, m.Params)
+		message.AddAlternative(MimeHtml, html)
+	}
+
 	if len(m.Attachments) > 0 {
 		for _, attach := range m.Attachments {
 			message.Attach(attach.Path)
 		}
 	}
-
-	m.Source = map[string]string{"plain": plain, "html": html}
 
 	return message, true, nil
 }
