@@ -10,6 +10,7 @@ import (
 	"net/mail"
 	"os"
 	"strings"
+	"sync"
 )
 
 // SendCmd command to run the cli version of go-email
@@ -83,22 +84,39 @@ func (c *SendCmd) Run(args []string) int {
 		return 1
 	}
 
-	for _, row := range rows {
+	headers := rows[0]
+
+	var wg sync.WaitGroup
+
+	for _, row := range rows[1:] {
+		wg.Add(1)
+		var params = make(map[string]interface{})
+		for i, column := range headers {
+			params[column] = rows[i]
+		}
 		message := email.Default()
 		message.SetFrom(viper.GetString("email.sender_name"), viper.GetString("email.sender_email"))
 		message.SetSubject(subject)
 		message.SetTo(mail.Address{Name: row[1], Address: row[0]})
 		message.SetHTMLBody(htmlTemplate)
-		message.AddParam("fullName", row[1])
-		if err := message.Send(account); err != nil {
-			c.logger.Error("sending email failed", zap.Errors("errors", err))
-			continue
-		} else {
-			c.logger.Info("sending email succeed", zap.String("email", row[1]))
-		}
+		message.AddParams(params)
+		go func() {
+			defer wg.Done()
+			c.sendEmail(account, message)
+		}()
 	}
 
+	wg.Wait()
+
 	return 0
+}
+
+func (c *SendCmd) sendEmail(account *email.Account, message *email.Message) {
+	if err := message.Send(account); err != nil {
+		c.logger.Error("sending email failed", zap.Errors("errors", err))
+	} else {
+		c.logger.Info("sending email succeed", zap.String("email", message.To[0].Address))
+	}
 }
 
 func getKey(args []string, key string) (string, bool) {
