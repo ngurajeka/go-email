@@ -11,6 +11,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 )
 
 // SendCmd command to run the cli version of go-email
@@ -40,6 +41,7 @@ func (c *SendCmd) Synopsis() string {
 
 // Run running the sending email process
 func (c *SendCmd) Run(args []string) int {
+	start := time.Now()
 	subject, ok := getKey(args, "subject")
 	if !ok {
 		c.logger.Error("invalid subject")
@@ -89,10 +91,9 @@ func (c *SendCmd) Run(args []string) int {
 	var wg sync.WaitGroup
 
 	for _, row := range rows[1:] {
-		wg.Add(1)
 		var params = make(map[string]interface{})
 		for i, column := range headers {
-			params[column] = rows[i]
+			params[column] = row[i]
 		}
 		message := email.Default()
 		message.SetFrom(viper.GetString("email.sender_name"), viper.GetString("email.sender_email"))
@@ -100,13 +101,19 @@ func (c *SendCmd) Run(args []string) int {
 		message.SetTo(mail.Address{Name: row[1], Address: row[0]})
 		message.SetHTMLBody(htmlTemplate)
 		message.AddParams(params)
-		go func() {
+
+		wg.Add(1)
+		go func(account *email.Account, message *email.Message) {
 			defer wg.Done()
 			c.sendEmail(account, message)
-		}()
+		}(account, message)
 	}
 
 	wg.Wait()
+
+	end := time.Now()
+
+	c.logger.Info("task has been executed", zap.Time("start", start), zap.Time("end", end))
 
 	return 0
 }
