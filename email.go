@@ -21,4 +21,5 @@ type Message struct {
 
 type Service interface {
 	Send(subject string, target Target, cc, bcc *[]Target, message Message, attachments *[]Attachment) (string, error)
+	Status(messageID string) string
 }

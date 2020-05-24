@@ -1,31 +1,18 @@
 package email_test
 
 import (
-	"log"
-	"testing"
-
 	"github.com/ngurajeka/go-email"
 	"github.com/spf13/viper"
+	"log"
+	"testing"
 )
 
-func init() {
-	viper.SetConfigName("config")
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath(".")
-	_ = viper.ReadInConfig()
-}
-
-func TestSendingSMTPEmail(t *testing.T) {
-	smtpConfig := email.NewSMTPConfig(
-		viper.GetString("smtp.host"),
-		viper.GetString("smtp.username"),
-		viper.GetString("smtp.password"),
-		viper.GetInt("smtp.port"))
+func TestSendingSendgridAPIEmail(t *testing.T) {
 	sender := email.Target{
-		Name:  viper.GetString("smtp.sender.name"),
-		Email: viper.GetString("smtp.sender.email"),
+		Name:  viper.GetString("sendgrid.sender.name"),
+		Email: viper.GetString("sendgrid.sender.email"),
 	}
-	emailSvc := email.NewSMTPEmailService(smtpConfig, sender)
+	emailSvc := email.NewSendgridApiEmailService(viper.GetString("sendgrid.key"), sender)
 
 	receiver := email.Target{
 		Name:  viper.GetString("receiver.name"),

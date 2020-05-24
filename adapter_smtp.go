@@ -63,3 +63,7 @@ func (svc *smtpEmailService) Send(subject string, target Target, cc, bcc *[]Targ
 
 	return messageID, nil
 }
+
+func (svc *smtpEmailService) Status(messageID string) string {
+	panic("not implemented")
+}
