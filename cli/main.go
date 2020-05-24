@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/mitchellh/cli"
+	"github.com/ngurajeka/go-email"
 	"github.com/ngurajeka/go-email/cmd"
 	"github.com/spf13/viper"
 	"go.uber.org/zap"
@@ -26,13 +27,25 @@ func main() {
 	logger, _ := zapConfig.Build()
 	defer logger.Sync()
 
+	smtpConfig := email.SMTPConfig{
+		Host:     viper.GetString("smtp.host"),
+		Username: viper.GetString("smtp.username"),
+		Password: viper.GetString("smtp.password"),
+		Port:     viper.GetInt("smtp.port"),
+	}
+	sender := email.Target{
+		Name:  viper.GetString("sender.name"),
+		Email: viper.GetString("sender.email"),
+	}
+	emailSvc := email.NewSMTPEmailService(smtpConfig, sender)
+
 	ui = &cli.BasicUi{Writer: os.Stdout}
 
 	commands := &cli.CLI{
 		Args: os.Args[1:],
 		Commands: map[string]cli.CommandFactory{
 			"send": func() (cli.Command, error) {
-				return cmd.NewSendCmd(ui, logger), nil
+				return cmd.NewSendCmd(ui, logger, emailSvc), nil
 			},
 		},
 		HelpFunc: cli.BasicHelpFunc("go-email"),

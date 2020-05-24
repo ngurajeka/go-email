@@ -4,10 +4,8 @@ import (
 	"encoding/csv"
 	"github.com/mitchellh/cli"
 	"github.com/ngurajeka/go-email"
-	"github.com/spf13/viper"
 	"go.uber.org/zap"
 	"io/ioutil"
-	"net/mail"
 	"os"
 	"strings"
 	"sync"
@@ -16,13 +14,14 @@ import (
 
 // SendCmd command to run the cli version of go-email
 type SendCmd struct {
-	ui     cli.Ui
-	logger *zap.Logger
+	ui       cli.Ui
+	logger   *zap.Logger
+	emailSvc email.Service
 }
 
 // NewSendCmd create new SendCmd command
-func NewSendCmd(ui cli.Ui, logger *zap.Logger) *SendCmd {
-	return &SendCmd{ui, logger}
+func NewSendCmd(ui cli.Ui, logger *zap.Logger, emailSvc email.Service) *SendCmd {
+	return &SendCmd{ui: ui, logger: logger, emailSvc: emailSvc}
 }
 
 // Help return help text
@@ -57,29 +56,19 @@ func (c *SendCmd) Run(args []string) int {
 		c.logger.Error("invalid html template")
 		return 1
 	}
-
-	account := email.NewAccount(viper.GetString("email.sender_name"), viper.GetString("email.sender_email"))
-	account.SetCredential(
-		viper.GetString("email.host"),
-		viper.GetString("email.username"),
-		viper.GetString("email.password"),
-		viper.GetInt("email.port"),
-	)
-
 	htmlTemplate, err := ioutil.ReadFile(htmlTemplatePath)
 	if err != nil {
-		c.logger.Error("reading html template failed", zap.String("path", htmlTemplatePath), zap.Error(err))
+		c.logger.Error("file not found")
 		return 1
 	}
-
-	f, err := os.Open(targetPath)
+	targetFile, err := os.Open(targetPath)
 	if err != nil {
 		c.logger.Error("reading target file failed", zap.Error(err))
 		return 1
 	}
-	defer f.Close()
+	defer targetFile.Close()
 
-	csvReader := csv.NewReader(f)
+	csvReader := csv.NewReader(targetFile)
 	rows, err := csvReader.ReadAll()
 	if err != nil {
 		c.logger.Error("reading target file failed", zap.Error(err))
@@ -91,22 +80,34 @@ func (c *SendCmd) Run(args []string) int {
 	var wg sync.WaitGroup
 
 	for _, row := range rows[1:] {
+		wg.Add(1)
+
 		var params = make(map[string]interface{})
 		for i, column := range headers {
 			params[column] = row[i]
 		}
-		message := email.Default()
-		message.SetFrom(viper.GetString("email.sender_name"), viper.GetString("email.sender_email"))
-		message.SetSubject(subject)
-		message.SetTo(mail.Address{Name: row[1], Address: row[0]})
-		message.SetHTMLBody(htmlTemplate)
-		message.AddParams(params)
 
-		wg.Add(1)
-		go func(account *email.Account, message *email.Message) {
+		target := email.Target{
+			Name:  row[1],
+			Email: row[0],
+		}
+
+		htmlMessage, err := email.ParseTemplate(htmlTemplate, params)
+		if err != nil {
+			c.logger.Error("parsing html message failed", zap.Error(err))
+			continue
+		}
+
+		message := email.Message{HTML: htmlMessage}
+
+		go func(target email.Target, message email.Message) {
 			defer wg.Done()
-			c.sendEmail(account, message)
-		}(account, message)
+			if _, err := c.emailSvc.Send(subject, target, nil, nil, message, nil); err != nil {
+				c.logger.Error("sending email failed", zap.String("target", target.String()), zap.Error(err))
+			} else {
+				c.logger.Info("sending email succeed", zap.String("target", target.String()))
+			}
+		}(target, message)
 	}
 
 	wg.Wait()
@@ -116,14 +117,6 @@ func (c *SendCmd) Run(args []string) int {
 	c.logger.Info("task has been executed", zap.Time("start", start), zap.Time("end", end))
 
 	return 0
-}
-
-func (c *SendCmd) sendEmail(account *email.Account, message *email.Message) {
-	if err := message.Send(account); err != nil {
-		c.logger.Error("sending email failed", zap.Errors("errors", err))
-	} else {
-		c.logger.Info("sending email succeed", zap.String("email", message.To[0].Address))
-	}
 }
 
 func getKey(args []string, key string) (string, bool) {
